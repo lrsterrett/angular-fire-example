@@ -1,1 +1,55 @@
-/* You can add global styles to this file, and also import other style files */
+:root {
+  --primary: #122e7b;
+  --secondary: #ef3289;
+  --accent: #cccfde;
+  --white: #ffffff;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+p,
+label,
+span,
+button {
+  font-family: 'Nunito', sans-serif;
+  margin: 0;
+}
+
+img {
+  border-radius: 50%;
+}
+
+button {
+  cursor: pointer;
+  background: inherit;
+  border: none;
+}
+
+button.button {
+  border-width: 2px;
+  border-radius: 5px;
+  border-style: solid;
+  padding: 5px 0;
+  width: 100px;
+}
+
+button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
+button.secondary {
+  background: var(--secondary);
+  border-color: var(--secondary);
+  color: white;
+}
+
+button.subtle {
+  background: white;
+  border-color: var(--primary);
+  color: var(--primary);
+}

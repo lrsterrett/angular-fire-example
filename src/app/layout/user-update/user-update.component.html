@@ -1,0 +1,5 @@
+<ng-container *ngIf='dataService.currentUser$ | async'>
+  <label for='add-stairs-today'>Need to add stairs for today?</label>
+  <input type='number' id='add-stairs-today' min='0' [formControl]='stairs'>
+  <button class='add button secondary' (click)='add()'>Add</button>
+</ng-container>

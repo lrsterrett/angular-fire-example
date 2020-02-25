@@ -1,4 +1,7 @@
 import { Component } from '@angular/core';
+import { AngularFireAuth } from '@angular/fire/auth';
+import { auth } from 'firebase';
+import 'firebase/firestore';
 
 @Component({
   selector: 'app-root',
@@ -6,5 +9,21 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'angular-fire-example';
+
+  constructor(
+    public fireAuth: AngularFireAuth
+  ) { }
+
+  ngOnInit() {
+  }
+
+  login(): void {
+    this.fireAuth.auth.signInWithPopup(new auth.GoogleAuthProvider());
+  }
+
+  logout(): void {
+    this.fireAuth.auth.signOut();
+  }
+
+  
 }

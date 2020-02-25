@@ -1,0 +1,18 @@
+<div *ngIf='(user$ | async) as user' class='user-card'>
+  <header class='card-header'>
+    <h2>{{ user.name }}</h2>
+    <button class='edit-button'>
+      <i class="fas fa-ellipsis-h"></i>
+    </button>
+  </header>
+  <div class='card-content'>
+    <div class='selectors'>
+      <button class='selector-button button primary' (click)="changeView('today')">Today</button>
+      <button class='selector-button button primary' (click)="changeView('thisWeek')">This Week</button>
+      <button class='selector-button button primary' (click)="changeView('thisMonth')">This Month</button>
+      <button class='selector-button button primary' (click)="changeView('thisYear')">This Year</button>
+      <button class='selector-button button primary' (click)="changeView('allTime')">All Time</button>
+    </div>
+    <p class='stair-display'>{{ user[currentView] }}</p>
+  </div>
+</div>
