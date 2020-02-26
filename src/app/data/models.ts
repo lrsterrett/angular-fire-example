@@ -1,9 +1,24 @@
 export interface HighLevelStats {
-  today: number,
-  thisWeek: number,
-  thisMonth: number,
-  thisYear: number,
-  allTime: number,
+  today: {
+    date: string;
+    stairs: number;
+  },
+  thisWeek: {
+    date: string;
+    stairs: number;
+  },
+  thisMonth: {
+    date: string;
+    stairs: number;
+  },
+  thisYear: {
+    date: string;
+    stairs: number;
+  },
+  allTime: {
+    date: string;
+    stairs: number;
+  },
 }
 
 export interface UserBasicInfo {
@@ -12,16 +27,16 @@ export interface UserBasicInfo {
 }
 
 export interface User extends UserBasicInfo, HighLevelStats {
-  groups: string[];
+  groups: Record<string, UserBasicInfo>;
 }
 
 export interface Group extends HighLevelStats {
   name: string;
-  members: UserBasicInfo[];
+  members: Record<string, UserBasicInfo>;
 }
 
 export interface DayHistory {
-  timeStamp: number;
+  unixTimeStamp: number;
   stairs: number;
 }
 

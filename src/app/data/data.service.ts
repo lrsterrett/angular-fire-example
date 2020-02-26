@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
-import { Observable, combineLatest, of } from 'rxjs';
-import { map, switchMap, tap, take } from 'rxjs/operators';
+import { Observable } from 'rxjs';
 import { AngularFireAuth } from '@angular/fire/auth';
 import { AngularFirestore } from '@angular/fire/firestore';
 import 'firebase/firestore';
 import * as moment from 'moment';
 
-import { User, UserBasicInfo, DayHistory, HighLevelStats, Group } from './models';
+import { User, UserBasicInfo } from './models';
+import { map, switchMap, tap } from 'rxjs/operators';
 
 const DATE_FORMAT = 'YYYY-MM-DD';
 
@@ -15,84 +15,86 @@ const DATE_FORMAT = 'YYYY-MM-DD';
 })
 export class DataService {
   private _currentUser: UserBasicInfo;
+  private _currentUserStats: User;
   currentUser$: Observable<User>;
 
   constructor(
     private afs: AngularFirestore,
     fireAuth: AngularFireAuth
   ) {
-    this.afs.collectionGroup<any>('history').stateChanges().subscribe(x => console.log(x));
     this.currentUser$ = fireAuth.authState.pipe(
-      tap(auth => this._currentUser = auth ? { email: auth.email, name: auth.displayName } : undefined),
-      switchMap(auth => auth ? this.getUserStats(auth.email) : of(undefined))
+      tap(auth => this._currentUser = { email: auth.email, name: auth.displayName }),
+      switchMap(auth => this.getUserStats(auth.email))
     )
   }
 
   getUserStats(email: string): Observable<User> {
-    if (!email.includes('@jahnelgroup.com')) {
-      return of(undefined);
-    }
-    const userInfo$ = this.afs.doc<Pick<User, 'email'|'name'|'groups'>>(`users/${email}`).valueChanges().pipe(
-      map(user => user || this.handleNewUser())
-    );
-    const history$: Observable<HighLevelStats> = this.afs.collection<DayHistory>(`users/${email}/history`).valueChanges().pipe(
-      map(history => this.parseStatsFromHistory(history))
-    );
-    return combineLatest<User>(userInfo$, history$, (userInfo, history) => {
-      return {...userInfo, ...history}
-    })
+    return this.afs.collection('users').doc<User>(email).valueChanges().pipe(
+      map(user => {
+        return user || this.handleNewUser()
+      }),
+      tap(userStats => this._currentUserStats = userStats)
+    )
   }
 
-  async addStairs(stairs: number, date: string = null): Promise<void> {
-    const now = moment();
-    const dateString = date || now.format(DATE_FORMAT);
-    const docPath = `users/${this._currentUser.email}/history/${dateString}`;
-    const doc = await this.afs.doc<DayHistory>(docPath).valueChanges().pipe(take(1)).toPromise();
-    this.afs.doc(docPath).set({
-      timeStamp: now.startOf('day').valueOf(),
-      stairs: doc ? doc.stairs + stairs : stairs
-    })
-  }
-
-  private parseStatsFromHistory(history: DayHistory[]) {
-    const stats: HighLevelStats = {
-      today: 0,
-      thisWeek: 0,
-      thisMonth: 0,
-      thisYear: 0,
-      allTime: 0
-    };
-    for (let day of history) {
-      const instance = moment(day.timeStamp);
-      const now = moment();
-      stats.allTime += day.stairs;
-      if (now.isSame(instance, 'year')) {
-        stats.thisYear += day.stairs;
-        if (now.isSame(instance, 'month')) {
-          stats.thisMonth += day.stairs;
+  addStairs(stairs: number, date: string = null): void {
+    const docRef = this.afs.firestore.doc(`users/${this._currentUser.email}`);
+    this.afs.firestore.runTransaction((transaction) => {
+      return transaction.get(docRef).then(doc => {
+        const now = moment();
+        const user = doc.data() as User;
+        if (moment(user.thisYear.date, DATE_FORMAT).isSame(now, 'year')) {
+          user.thisYear.stairs += stairs;
+        } else {
+          user.thisYear.stairs = stairs;
         }
-        if (now.isSame(instance, 'week')) {
-          stats.thisWeek += day.stairs;
-          if (now.isSame(instance, 'day')) {
-            stats.today = day.stairs;
-          }
+        if (moment(user.thisMonth.date, DATE_FORMAT).isSame(now, 'month')) {
+          user.thisMonth.stairs += stairs;
+        } else {
+          user.thisMonth.stairs = stairs;
         }
-      }
-    }
-    return stats;
-  }
-
-  private handleNewUser() {
-    const newUser: Partial<User> = {
-      ...this._currentUser,
-      groups: this._currentUser.email.includes('@jahnelgroup.com') ? ['JG'] : []
-    }
-    this.afs.doc(`users/${this._currentUser.email}`).set(newUser).then(_ => {
-      const now = moment();
-      this.afs.doc(`users/${this._currentUser.email}/history/${now.format(DATE_FORMAT)}`).set({
-        timeStamp: now.startOf('day').valueOf(),
-        stairs: 0
+        if (moment(user.thisWeek.date, DATE_FORMAT).isSame(now, 'week')) {
+          user.thisWeek.stairs += stairs;
+        } else {
+          user.thisWeek.stairs = stairs;
+        }
+        if (moment(user.today.date, DATE_FORMAT).isSame(moment(), 'day')) {
+          user.today.stairs += stairs;
+        } else {
+          user.today.stairs = stairs;
+        }
+        user.allTime.stairs += stairs;
+        transaction.set(docRef, user);
       })
-    });
+    })
+  }
+
+  private handleNewUser(): User {
+    const user: User = {
+      ...this._currentUser,
+      today: {
+        date: moment().format(DATE_FORMAT),
+        stairs: 0
+      },
+      thisWeek: {
+        date: moment().startOf('week').format(DATE_FORMAT),
+        stairs: 0
+      },
+      thisMonth: {
+        date: moment().startOf('month').format(DATE_FORMAT),
+        stairs: 0
+      },
+      thisYear: {
+        date: moment().startOf('year').format(DATE_FORMAT),
+        stairs: 0
+      },
+      allTime: {
+        date: moment().format(DATE_FORMAT),
+        stairs: 0
+      },
+      groups: {}
+    }
+    this.afs.collection('users').doc(this._currentUser.email).set(user);
+    return user;
   }
 }
